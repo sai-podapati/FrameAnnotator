@@ -18,7 +18,6 @@ import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +45,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
@@ -61,240 +59,197 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ImageDisplay extends JFrame {
-    private JLabel imageLabel;
-    private JLabel frameNumberLbl;
-    private JTextField frameSearchField;
-    private List<BufferedImage> imageFrames;
-    private int currentIndex;
-    private JPanel leftPanel;
-    private JPanel rightPanel;
+	private JLabel imageLabel;
+	private JLabel frameNumberLbl;
+	private JTextField frameSearchField;
+	private List<BufferedImage> imageFrames;
+	private int currentIndex;
+	private JPanel leftPanel;
+	private JPanel rightPanel;
 
-    private JRadioButton blurButton;
-    private JRadioButton annotationButton;
-    private JButton zoomInButton;
-    private JButton zoomOutButton;
-    private JScrollPane scrollPane;
+	private JRadioButton blurButton;
+	private JRadioButton annotationButton;
 
-    private BufferedImage currentImage;
-    private Rectangle selection;
-    private Point startPoint;
-    private List<Rectangle> annotations = new ArrayList<>();
-    private List<String> annotationLabels = new ArrayList<>();
+	private BufferedImage currentImage;
+	private Rectangle selection;
+	private Point startPoint;
+	private List<Rectangle> annotations = new ArrayList<>();
 	private List<Rectangle> drawnRectangles = new ArrayList<>();
+	private List<String> annotationLabels = new ArrayList<>();
 	private List<String> confidenceLevels = new ArrayList<>();
 	private List<String> frameQualities = new ArrayList<>(); // Store frame qualities separately
 	private List<String> azimustList = new ArrayList<>();
 	private List<String> angleList = new ArrayList<>();
 	private List<String> positionList = new ArrayList<>();
 	private List<String> heightList = new ArrayList<>();
-    private static final Logger logger = LoggerFactory.getLogger(ImageDisplay.class);
-    private Map<String, Color> categoryColors = new HashMap<>() {{
-        put("pedestrian", Color.RED);
-        put("construction vehicle", Color.BLUE);
-        put("pile", Color.GREEN);
-        put("bucket", Color.ORANGE);
-        put("fork", Color.ORANGE);
-        put("stone", Color.YELLOW);
-        put("truck", Color.MAGENTA);
-        put("car", Color.CYAN);
-    }};
+	private static final Logger logger = LoggerFactory.getLogger(ImageDisplay.class);
+	private Map<String, Color> categoryColors = new HashMap<>() {
+		{
+			put("pedestrian", Color.RED);
+			put("construction vehicle", Color.BLUE);
+			put("pile", Color.GREEN);
+			put("bucket", Color.ORANGE);
+			put("fork", Color.ORANGE);
+			put("stone", Color.YELLOW);
+			put("truck", Color.MAGENTA);
+			put("car", Color.CYAN);
+		}
+	};
 
-    private double scaleFactor = 1.0;
+	private double scaleFactor = 1.0;
 
-    public ImageDisplay(List<BufferedImage> images, String videoName) {
-        this.imageFrames = images;
-        this.currentIndex = 0;
+	public ImageDisplay(List<BufferedImage> images, String videoName) {
+	    this.imageFrames = images;
+	    this.currentIndex = 0;
 
-        setTitle("Annotator");
-        try {
+	    setTitle("Annotator");
+	    try {
             UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
         } catch (Exception e) {
             e.printStackTrace();
         }
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
+	    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	    setLayout(new BorderLayout());
 
-        leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+	    leftPanel = new JPanel();
+	    leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
 
-        frameNumberLbl = new JLabel("");
+	    frameNumberLbl = new JLabel("");
 
-        JPanel goPanel = new JPanel();
-        goPanel.setLayout(new FlowLayout(FlowLayout.LEFT, -10, 5));
+	    JPanel goPanel = new JPanel();
+	    goPanel.setLayout(new FlowLayout(FlowLayout.LEFT, -10, 5));
 
-        JLabel goToLabel = new JLabel("           Go To:                        ");
-        goPanel.add(goToLabel);
-        frameSearchField = new JTextField(3);
-        frameSearchField.setPreferredSize(new Dimension(150, 30));
-        frameSearchField.addActionListener(e -> searchFrame());
-        goPanel.add(frameSearchField);
+	    JLabel goToLabel = new JLabel(" 		   Go To:  					 ");
+	    goPanel.add(goToLabel);
+	    frameSearchField = new JTextField(3);
+	    frameSearchField.setPreferredSize(new Dimension(150, 30));
+	    frameSearchField.addActionListener(e -> searchFrame());
+	    goPanel.add(frameSearchField);
 
-        blurButton = createRadioButtonWithShortcut("Masking", e -> buttonChange(), 'M');
-        annotationButton = createRadioButtonWithShortcut("Annotation", e -> buttonChange(), 'A');
-        blurButton.setSelected(true);
-        blurButton.addActionListener(e -> buttonChange());
-        annotationButton.addActionListener(e -> buttonChange());
+	    blurButton = createRadioButtonWithShortcut("Masking", e -> buttonChange(), 'M');
+	    annotationButton = createRadioButtonWithShortcut("Annotation", e -> buttonChange(), 'A');
+	    blurButton.setSelected(true);
+	    blurButton.addActionListener(e -> buttonChange());
+	    annotationButton.addActionListener(e -> buttonChange());
 
-        ButtonGroup group = new ButtonGroup();
-        group.add(blurButton);
-        group.add(annotationButton);
+	    ButtonGroup group = new ButtonGroup();
+	    group.add(blurButton);
+	    group.add(annotationButton);
 
-        leftPanel.add(frameNumberLbl);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        leftPanel.add(blurButton);
-        leftPanel.add(annotationButton);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        leftPanel.add(goPanel);
+	    leftPanel.add(frameNumberLbl);
+	    leftPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Add spacing
+	    leftPanel.add(blurButton);
+	    leftPanel.add(annotationButton);
+	    leftPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Add spacing
+	    leftPanel.add(goPanel);
+		
+		add(leftPanel, BorderLayout.WEST);
 
-        add(leftPanel, BorderLayout.WEST);
-        leftPanel.add(Box.createRigidArea(new Dimension(0, 30)));
+		leftPanel.add(Box.createRigidArea(new Dimension(0, 30))); // Add some space
 
-        imageLabel = new JLabel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                if (currentImage != null) {
-                    int width = (int) (currentImage.getWidth() * scaleFactor);
-                    int height = (int) (currentImage.getHeight() * scaleFactor);
-                    g.drawImage(currentImage.getScaledInstance(width, height, Image.SCALE_SMOOTH), 0, 0, this);
-                }
+		imageLabel = new JLabel() {
+			@Override
+			protected void paintComponent(Graphics g) {
 
-                if (selection != null) {
-                    g.setColor(Color.YELLOW);
-                    g.drawRect(selection.x, selection.y, selection.width, selection.height);
-                }
+				super.paintComponent(g);
+				if (selection != null) {
+					g.setColor(Color.YELLOW);
+					g.drawRect(selection.x, selection.y, selection.width, selection.height);
+				}
 
-                for (int i = 0; i < annotations.size(); i++) {
-                    Rectangle annotation = annotations.get(i);
-                    String label = annotationLabels.get(i);
-                    g.setColor(categoryColors.getOrDefault(label, Color.WHITE));
-                    g.drawRect((int) (annotation.x * scaleFactor), (int) (annotation.y * scaleFactor),
-                            (int) (annotation.width * scaleFactor), (int) (annotation.height * scaleFactor));
-                    g.setFont(new Font("Arial", Font.BOLD, 16));
-                    g.drawString(label, (int) (annotation.x * scaleFactor), (int) ((annotation.y) * scaleFactor));
-                }
-            }
-        };
+				for (int i = 0; i < annotations.size(); i++) {
+					Rectangle annotation = annotations.get(i);
+					String label = annotationLabels.get(i);
+					g.setColor(categoryColors.getOrDefault(label, Color.WHITE));
+					g.drawRect((int) (annotation.x * scaleFactor), (int) (annotation.y * scaleFactor),
+							(int) (annotation.width * scaleFactor), (int) (annotation.height * scaleFactor));
+					g.setFont(new Font("Arial", Font.BOLD, 16));
+					g.drawString(label, (int) (annotation.x * scaleFactor), (int) ((annotation.y) * scaleFactor));
+				}
+			}
+		};
+		imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		updateImage();
+		rightPanel = new JPanel();
+		rightPanel.setBounds(0, 0, currentImage.getWidth(), currentImage.getHeight());
+		imageLabel.setBounds(0, 0, currentImage.getWidth(), currentImage.getHeight());
+		rightPanel.add(imageLabel);
+		add(rightPanel, BorderLayout.CENTER);
 
-       
-//        rightPanel = new JPanel();
-//        rightPanel.setBounds(0, 0, currentImage.getWidth(), currentImage.getHeight());
-//        rightPanel.add(imageLabel);
-//        add(rightPanel, BorderLayout.CENTER);
-        scrollPane = new JScrollPane(imageLabel);
-        add(scrollPane, BorderLayout.CENTER);
-        
-        updateImage();
+		JPanel bottomPanel = new JPanel();
+		
+		bottomPanel.add(createButtonWithShortcut("Previous", e -> showPreviousImage(), 'P'));
+		bottomPanel.add(createButtonWithShortcut("Next", e -> showNextImage(), 'N'));
+		bottomPanel.add(createButtonWithShortcut("Save", e -> saveImage(videoName), 'S'));
+		bottomPanel.add(createButtonWithShortcut("Undo", e -> undoLastAction(), 'U'));
+		bottomPanel.add(createButtonWithShortcut("Reset", e -> resetAnnotations(), 'R'));
 
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.add(createButtonWithShortcut("Previous", e -> showPreviousImage(), 'P'));
-        bottomPanel.add(createButtonWithShortcut("Next", e -> showNextImage(), 'N'));
-        bottomPanel.add(createButtonWithShortcut("Save", e -> saveImage(videoName), 'S'));
-        bottomPanel.add(createButtonWithShortcut("Undo", e -> undoLastAction(), 'U'));
-        bottomPanel.add(createButtonWithShortcut("Reset", e -> resetAnnotations(), 'R'));
-        bottomPanel.add(createButtonWithShortcut("Zoom In", e -> zoomIn(), 'I'));
-        bottomPanel.add(createButtonWithShortcut("Zoom Out", e -> zoomOut(), 'O'));
+		add(bottomPanel, BorderLayout.SOUTH);
 
-        add(bottomPanel, BorderLayout.SOUTH);
+		setExtendedState(JFrame.MAXIMIZED_BOTH);
+		setVisible(true);
 
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
-        setVisible(true);
+		SwingUtilities.invokeLater(this::updateImage);
 
-        SwingUtilities.invokeLater(this::updateImage);
+		imageLabel.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if (blurButton.isSelected()) {
+					startPoint = e.getPoint();
+					selection = new Rectangle(startPoint);
+				} else {
+					startPoint = e.getPoint();
+					selection = new Rectangle(startPoint);
+				}
+			}
 
-        imageLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                startPoint = e.getPoint();
-                selection = new Rectangle(startPoint);
-            }
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				if (selection != null) {
+					Rectangle scaledSelection = scaleRectangleToOriginal(selection);
 
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (selection != null) {
-                    Rectangle scaledSelection = scaleRectangleToOriginal(selection);
-                    if (blurButton.isSelected()) {
-                        repaint();
-                        blurSelection(scaledSelection);
-                    } else {
-                        annotations.add(new Rectangle(scaledSelection));
-                        getAnnotationPanel(scaledSelection);
-                    }
-                    selection = null;
-                    repaint();
-                }
-            }
-        });
+					if (blurButton.isSelected()) {
+						repaint();
+						blurSelection(scaledSelection);
+					} else {
+						drawnRectangles.add(new Rectangle(scaledSelection));
+						getAnnotationPanel(scaledSelection);
+					}
+					selection = null;
+					repaint();
+				}
+			}
 
-        imageLabel.addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                if (selection != null) {
-                    int x = Math.min(Math.max(e.getX(), 0), imageLabel.getWidth());
-                    int y = Math.min(Math.max(e.getY(), 0), imageLabel.getHeight());
-                    selection.setBounds(Math.min(startPoint.x, x), Math.min(startPoint.y, y),
-                            Math.abs(startPoint.x - x), Math.abs(startPoint.y - y));
-                    repaint();
-                }
-            }
-        });
+		});
 
-        imageLabel.getInputMap().put(KeyStroke.getKeyStroke("ESCAPE"), "removeSelection");
-        imageLabel.getActionMap().put("removeSelection", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                selection = null;
-                repaint();
-            }
-        });
+		imageLabel.addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseDragged(MouseEvent e) {
+				if (selection != null) {
+					int x = Math.min(Math.max(e.getX(), 0), imageLabel.getWidth());
+					int y = Math.min(Math.max(e.getY(), 0), imageLabel.getHeight());
+					selection.setBounds(Math.min(startPoint.x, x), Math.min(startPoint.y, y),
+							Math.abs(startPoint.x - x), Math.abs(startPoint.y - y));
+					repaint();
+				}
+			}
+		});
 
-        updateFrameNumber(currentIndex);
-    }
-    
-    private void zoomIn() {
-        scaleFactor *= 1.1; // Increase scale factor by 10%
-        updateImage();
-    }
-
-    private void zoomOut() {
-        scaleFactor /= 1.1; // Decrease scale factor by 10%
-        updateImage();
-    }
-    
-//	private void updateImage() {
-//		currentImage = imageFrames.get(currentIndex);
-//		if (currentImage != null) {
-//			scaleFactor = Math.min((double) (getWidth() - 200) / currentImage.getWidth(),
-//					(double) getHeight() / currentImage.getHeight());
-//
-//			Image scaledImage = currentImage.getScaledInstance((int) (currentImage.getWidth() * scaleFactor),
-//					(int) (currentImage.getHeight() * scaleFactor), Image.SCALE_SMOOTH);
-//
-//			imageLabel.setIcon(new ImageIcon(scaledImage));
-//			imageLabel.setText("");
-//		}
-//		updateFrameNumber(currentIndex);
-//		repaint();
-//	}
-	
-    private void updateImage() {
-        currentImage = imageFrames.get(currentIndex);
-        if (currentImage != null) {
-            int width = (int) (currentImage.getWidth() * scaleFactor);
-            int height = (int) (currentImage.getHeight() * scaleFactor);
-            Image scaledImage = currentImage.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-            imageLabel.setIcon(new ImageIcon(scaledImage));
-            imageLabel.setText("");
-            imageLabel.setPreferredSize(new Dimension(width, height));
-        }
-        updateFrameNumber(currentIndex);
-        scrollPane.revalidate();
-        scrollPane.repaint();
-    }
+		imageLabel.getInputMap().put(KeyStroke.getKeyStroke("ESCAPE"), "removeSelection");
+		imageLabel.getActionMap().put("removeSelection", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				selection = null;
+				repaint();
+			}
+		});
+		
+		updateFrameNumber(currentIndex);
+	}
 	
 	private void updateFrameNumber(int frameNumber) {
 		int frameNum = frameNumber + 1;
-		frameNumberLbl.setText(" Frame Number: "+ frameNum + "/" + imageFrames.size());
+		frameNumberLbl.setText(" Frame Number: "+ frameNum);
 	}
 	
 	private JButton createButtonWithShortcut(String text, ActionListener action, char shortcut) {
@@ -547,6 +502,22 @@ public class ImageDisplay extends JFrame {
 		annotationLabels.clear();
 		confidenceLevels.clear(); // Clear confidence levels
 		frameQualities.clear(); // Clear frame qualities
+	}
+
+	private void updateImage() {
+		currentImage = imageFrames.get(currentIndex);
+		if (currentImage != null) {
+			scaleFactor = Math.min((double) (getWidth() - 200) / currentImage.getWidth(),
+					(double) getHeight() / currentImage.getHeight());
+
+			Image scaledImage = currentImage.getScaledInstance((int) (currentImage.getWidth() * scaleFactor),
+					(int) (currentImage.getHeight() * scaleFactor), Image.SCALE_SMOOTH);
+
+			imageLabel.setIcon(new ImageIcon(scaledImage));
+			imageLabel.setText("");
+		}
+		updateFrameNumber(currentIndex);
+		repaint();
 	}
 
 	private void saveImage(String videoName) {
