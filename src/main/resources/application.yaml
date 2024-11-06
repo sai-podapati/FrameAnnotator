@@ -1,0 +1,9 @@
+categoryColors:
+  pedestrian: "#FF0000"  # RED
+  construction vehicle: "#0000FF"  # BLUE
+  pile: "#008000"  # GREEN
+  bucket: "#FFA500"  # ORANGE
+  fork: "#FFA500"  # ORANGE
+  stone: "#FFFF00"  # YELLOW
+  truck: "#FF00FF"  # MAGENTA
+  car: "#00FFFF"  # CYAN
